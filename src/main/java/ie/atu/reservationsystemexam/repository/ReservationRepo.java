@@ -8,9 +8,11 @@ import java.util.List;
 
 public interface ReservationRepo extends JpaRepository<Reservation, Long> {
 
+  List<Reservation> findByStudentEmail(String email);
+
   List<Reservation> findByReservationDate(LocalDate reservationDate);
 
   List<Reservation> findByReservationDateBetween(LocalDate startDate, LocalDate endDate);
 
-  List<Reservation> findByEquipment(String studentEmail);
+  List<Reservation> findByEquipmentTagAndReservationDate(String equipmentTag, LocalDate reservationDate);
 }

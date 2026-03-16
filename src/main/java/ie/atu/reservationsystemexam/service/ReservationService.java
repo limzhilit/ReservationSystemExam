@@ -3,51 +3,58 @@ package ie.atu.reservationsystemexam.service;
 import ie.atu.reservationsystemexam.exception.ReservationConflictException;
 import ie.atu.reservationsystemexam.exception.ReservationNotFoundException;
 import ie.atu.reservationsystemexam.model.Reservation;
-import jakarta.validation.Valid;
+import ie.atu.reservationsystemexam.repository.ReservationRepo;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class ReservationService {
 
-  private List<Reservation> reservations = new ArrayList<>();
-  private long nextId = 1;
+  final private ReservationRepo reservationRepo;
 
-  public Reservation addReservation(@Valid Reservation reservation) {
-    reservation.setReservationId(nextId++);
+  public Reservation addReservation(Reservation reservation) {
+
+    List<Reservation> reservations = reservationRepo.findByEquipmentTagAndReservationDate(reservation.getEquipmentTag(), reservation.getReservationDate());
     for (Reservation existing : reservations) {
-      if (existing.getEquipmentTag().equals(reservation.getEquipmentTag()) &&
-          existing.getReservationDate().equals(reservation.getReservationDate())) {
+      int existingStart = existing.getStartHour();
+      int existingEnd = existingStart + existing.getDurationHours();
 
-        int existingStart = existing.getStartHour();
-        int existingEnd = existingStart + existing.getDurationHours();
+      int newStart = reservation.getStartHour();
+      int newEnd = newStart + reservation.getDurationHours();
 
-        int newStart = reservation.getStartHour();
-        int newEnd = newStart + reservation.getDurationHours();
-
-        if (newStart < existingStart || newEnd > existingEnd) {
-          reservations.add(reservation);
-          throw new ReservationConflictException("Time slot already booked");
-        }
+      if (newStart < existingEnd || newEnd > existingStart) {
+        throw new ReservationConflictException("Time slot already booked");
       }
+
     }
-    reservations.add(reservation);
+    reservationRepo.save(reservation);
     return reservation;
   }
 
   public List<Reservation> getAllReservations() {
-    return reservations;
+    return reservationRepo.findAll();
   }
 
   public Reservation getReservationById(Long id) {
-    for (Reservation reservation: reservations) {
-      if (reservation.getReservationId().equals(id)) {
-        return reservation;
-      }
-    }
-    throw new ReservationNotFoundException("Reservation not found");
+    return reservationRepo.findById(id).orElseThrow(
+        () -> new ReservationNotFoundException("Reservation not found")
+    );
+  }
+
+  public List<Reservation> getReservationsByDate(LocalDate reservationDate) {
+    return reservationRepo.findByReservationDate(reservationDate);
+  }
+
+
+  public List<Reservation> getReservationsByTagAndDate(String equipmentTag, LocalDate reservationDate) {
+    return reservationRepo.findByEquipmentTagAndReservationDate(equipmentTag, reservationDate);
+  }
+
+  public List<Reservation> getReservationsByEmail(String email) {
+    return reservationRepo.findByStudentEmail(email);
   }
 }
